@@ -10,15 +10,20 @@ const serializeTransaction = (obj) => {
     if (obj.balance) {
         serialized.balance = obj.balance.toNumber();
     }
+    if (obj.amount) {
+        serialized.amount = obj.amount.toNumber();
+    }
+    
+    return serialized;
 }
 
 export async function createAccount(data) { // this data come from frontend 
     try {
-        const { userid } = await auth();
-        if (!userid) throw new Error('Unauthorized');
+        const { userId } = await auth();
+        if (!userId) throw new Error('Unauthorized');
 
         const user = await db.user.findUnique({
-            where: { clerkUserId: userid }
+            where: { clerkUserId: userId }
         });
 
         if (!user) {
@@ -41,7 +46,7 @@ export async function createAccount(data) { // this data come from frontend
         const shouldBeDefault = existingAccounts.length === 0 ? true : data.isDefault;
         // if this account should be default, unset other default account
         if (shouldBeDefault) {
-            await db.account.ipdateMany({
+            await db.account.updateMany({
                 where: { userId: user.id, isDefault: true },
                 data: { isDefault: false }
             })
@@ -62,5 +67,37 @@ export async function createAccount(data) { // this data come from frontend
 
     } catch (error) {
         throw new Error(error.message)
+    }
+}
+
+export async function getUserAccounts(){
+    try {
+        const { userId } = await auth();
+        if (!userId) throw new Error('Unauthorized');
+
+        const user = await db.user.findUnique({
+            where: { clerkUserId: userId }
+        });
+
+        if (!user) {
+            throw new Error("User not found");
+        }
+        
+        const accounts = await db.account.findMany({
+            where:{userId : user.id},
+            orderBy:{createdAt:'desc'},
+            include:{
+                _count:{
+                    select:{
+                        transactions:true,
+                    }
+                }
+            }
+        })
+        const serislizeAccount = accounts.map(serializeTransaction);
+        return serislizeAccount;
+    } 
+    catch (error) {
+        console.error(error);        
     }
 }
