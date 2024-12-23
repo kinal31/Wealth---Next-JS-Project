@@ -1,5 +1,6 @@
 "use client";
 
+import { bulkDeleteTransactions } from '@/actions/account';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox'
@@ -9,10 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { categoryColors } from '@/data/categories';
+import useFetch from '@/hooks/use-fetch';
 import { format } from 'date-fns';
-import { ChevronDown, ChevronUp, Clock, MoreHorizontalIcon, RefreshCw, Search, Trash, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, MoreHorizontalIcon, RefreshCw, Search, Trash, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { BarLoader } from 'react-spinners';
+import { toast } from 'sonner';
 
 const RECURRING_INTERVALS = {
     DAILY: "Daily",
@@ -30,8 +34,16 @@ const TransactionTable = ({ transactions }) => {
     const [searchTerm, setSearchTerm] = useState(""); // for search input
     const [typeFilter, setTypeFilter] = useState(""); // for type filter dropdown
     const [recurringFilter, setRecurringFilter] = useState(""); // for recurring filter dropdown
-
+    const [currentPage, setCurrentPage] = useState(1);
     const router = useRouter();
+
+    const ITEMS_PER_PAGE = 10;
+
+    const {
+        loading: deleteLoading,
+        fn: deleteFn,
+        data: deleted
+    } = useFetch(bulkDeleteTransactions);
 
     // Memoized filtered and sorted transactions
     const filteredAndSoredTransactions = useMemo(() => {
@@ -94,15 +106,27 @@ const TransactionTable = ({ transactions }) => {
         setSelectedIds((current) => (current.includes(id) ? current.filter((x) => x !== id) : [...current, id])); //if selected then remove it, else select it
     }
 
-    const handleSelectAll = (id) => {
-        setSelectedIds((current) => current.length === filteredAndSoredTransactions.length ? [] : filteredAndSoredTransactions.map((x) => x.id));
+    const   handleSelectAll = () => {
+        setSelectedIds((current) =>
+            current.length === paginatedTransactions.length
+                ? []
+                : paginatedTransactions.map((t) => t.id)
+        );
+    };
+
+    const handleBulkDelete = async () => {
+        // console.log("Bulk delete");
+        if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} transactions`)) {
+            return;
+        }
+        deleteFn(selectedIds);
     }
 
-    const handleBulkDelete = () => {
-        console.log("Bulk delete");
-
-
-    }
+    useEffect(() => {
+        if (deleted && !deleteLoading) {
+            toast.error("Transactions deleted successfully");
+        }
+    }, [deleted, deleteLoading])
 
     const handleClearFilter = () => {
         setSearchTerm("");
@@ -111,8 +135,28 @@ const TransactionTable = ({ transactions }) => {
         setSelectedIds([]);
     }
 
+
+    // Pagination calculations
+    const totalPages = Math.ceil(
+        filteredAndSoredTransactions.length / ITEMS_PER_PAGE
+    );
+    const paginatedTransactions = useMemo(() => {
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        return filteredAndSoredTransactions.slice(
+            startIndex,
+            startIndex + ITEMS_PER_PAGE
+        );
+    }, [filteredAndSoredTransactions, currentPage]);
+
+    const handlePageChange = (newPage) => {
+        setCurrentPage(newPage);
+        setSelectedIds([]); // Clear selections on page change
+    };
+
     return (
         <div className='space-y-4'>
+
+            {deleteLoading && (<BarLoader className='mt-4' width={"100%"} color='#9333ea' />)}
 
             {/* filter */}
             <div className="flex flex-col sm:flex-row gap-4">
@@ -170,7 +214,7 @@ const TransactionTable = ({ transactions }) => {
 
                             <TableHead className="w-[50px]">
                                 <Checkbox onCheckedChange={handleSelectAll}
-                                    checked={selectedIds.length === filteredAndSoredTransactions.length && filteredAndSoredTransactions.length > 0} />
+                                    checked={selectedIds.length === paginatedTransactions.length && paginatedTransactions.length > 0} />
                             </TableHead>
 
                             <TableHead className="cursor-pointer" onClick={() => handleSort("date")}>
@@ -210,13 +254,13 @@ const TransactionTable = ({ transactions }) => {
                     </TableHeader>
                     <TableBody>
                         {
-                            filteredAndSoredTransactions.length === 0 ? (
+                            paginatedTransactions.length === 0 ? (
                                 <TableRow colSpan={7} className='text-center text-muted-foreground'>
                                     <TableCell>No Transaction fount</TableCell>
                                 </TableRow>
                             ) :
                                 (
-                                    filteredAndSoredTransactions.map((transaction) => (
+                                    paginatedTransactions.map((transaction) => (
                                         <TableRow key={transaction.id}>
                                             <TableCell className="w-[50px]">
                                                 <Checkbox
@@ -281,10 +325,10 @@ const TransactionTable = ({ transactions }) => {
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent>
-                                                        <DropdownMenuLabel onClick={() => router.push(`/transaction/create?edit=${transaction.id}`)}>Edit</DropdownMenuLabel>
+                                                        <DropdownMenuItem onClick={() => router.push(`/transaction/create?edit=${transaction.id}`)}>Edit</DropdownMenuItem>
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem className='text-destructive'
-                                                        //  onClick={() => handleDelete(transaction.id)}
+                                                            onClick={() => deleteFn([transaction.id])}
                                                         >Delete</DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
@@ -298,8 +342,33 @@ const TransactionTable = ({ transactions }) => {
                 </Table>
 
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                    >
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm">
+                        Page {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                    >
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
+            )}
         </div>
-    )
+    );
 }
 
 export default TransactionTable

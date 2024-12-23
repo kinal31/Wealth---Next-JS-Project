@@ -10,7 +10,7 @@ import React, { useEffect } from 'react'
 import { toast } from 'sonner'
 
 const AccountCard = ({ account }) => {
-    console.log(account);
+    // console.log(account);
     
     const { id, name, balance, isDefault, type } = account;
 
