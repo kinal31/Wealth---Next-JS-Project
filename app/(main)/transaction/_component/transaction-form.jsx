@@ -15,6 +15,8 @@ import { CalendarIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import React, { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
+import { toast } from 'sonner'
+import ReceiptScanner from './receipt-scanner'
 
 const AddTransactionForm = ({ accounts, categories }) => {
 
@@ -23,8 +25,8 @@ const AddTransactionForm = ({ accounts, categories }) => {
     const { register, setValue, handleSubmit, formState: { errors }, getValues, watch, reset } = useForm({
         resolver: zodResolver(transactionSchema),
         defaultValues: {
-            type: "EXPENSES",
-            amount: " ",
+            type: "EXPENSE",
+            amount: "",
             description: "",
             date: new Date(),
             accountId: accounts.find((ac) => ac.isDefault)?.id, //safely access the id of the first account in the accounts array that has the isDefault property set to true.
@@ -55,16 +57,35 @@ const AddTransactionForm = ({ accounts, categories }) => {
 
     useEffect(() => {
         if (transactionResult?.success && !transactionLoading) {
-          toast.success( "Transaction created successfully");
-          reset();
-          router.push(`/account/${transactionResult.data.accountId}`);
+            toast.success("Transaction created successfully");
+            reset();
+            router.push(`/account/${transactionResult.data.accountId}`);
         }
-      }, [transactionResult, transactionLoading]);
-
+    }, [transactionResult, transactionLoading]);
+    
+    const handleScanComplete = (scannedData) =>{
+        console.log(scannedData);
+        if(scannedData){
+            setValue('amount', scannedData.amount.toString());
+            setValue('date', new Date(scannedData.date));
+          
+            if(scannedData.description){
+                setValue('description', scannedData.description);
+            }
+            if(scannedData.category){
+                setValue('category', scannedData.category);
+            }
+        }
+        else {
+            toast.error("Invalid receipt data. Please try again.");
+        }
+    
+    }
       
     return (
         <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
             {/* Ai Reciept Scanner  */}
+            <ReceiptScanner  onScanComplete={handleScanComplete}/>
 
             <div className="space-y-2">
                 <label className="text-sm font-medium"> Type </label>
@@ -125,14 +146,16 @@ const AddTransactionForm = ({ accounts, categories }) => {
             <div className="space-y-2">
                 <label className="text-sm font-medium"> Category</label>
                 <Select onValueChange={(value) => setValue('category', value)}
-                    defaultValue={getValues("category")} >
+                    // defaultValue={getValues("category")} 
+                    value={watch("category")}
+                    >
                     <SelectTrigger >
                         <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
                         {filteredCategories.map((category) => (
                             <SelectItem key={category.id} value={category.id}>
-                                {category.name} (${parseFloat(category.balance).toFixed(2)})
+                                {category.name} 
                             </SelectItem>
                         ))}
                     </SelectContent>
