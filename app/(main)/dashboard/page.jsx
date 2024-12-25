@@ -15,7 +15,7 @@ export default async function DashboardPage (){
     if(defaultAccount){
         budgetData = await getCurrentBudget(defaultAccount.id);
     }
-    console.log(budgetData);
+    // console.log(budgetData);
     
 
     return (
