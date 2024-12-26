@@ -112,7 +112,7 @@ function calculateNextRecurringDate(startDate, interval) {
             date.setDate(date.getDate() + 7);
             break;
         case "MONTHLY":
-            date.setMonth(date.getMonth() + 30);
+            date.setMonth(date.getMonth() + 1);
             break;
         case "YEARLY":
             date.setFullYear(date.getFullYear() + 1);
@@ -123,14 +123,14 @@ function calculateNextRecurringDate(startDate, interval) {
 
 export async function scanReceipt(file) {
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-  
-      // Convert File to ArrayBuffer
-      const arrayBuffer = await file.arrayBuffer();
-      // Convert ArrayBuffer to Base64
-      const base64String = Buffer.from(arrayBuffer).toString("base64");
-  
-      const prompt = `
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        // Convert File to ArrayBuffer
+        const arrayBuffer = await file.arrayBuffer();
+        // Convert ArrayBuffer to Base64
+        const base64String = Buffer.from(arrayBuffer).toString("base64");
+
+        const prompt = `
         Analyze this receipt image and extract the following information in JSON format:
         - Total amount (just the number)
         - Date (in ISO format)
@@ -149,37 +149,140 @@ export async function scanReceipt(file) {
   
         If its not a recipt, return an empty object
       `;
-  
-      const result = await model.generateContent([
-        {
-          inlineData: {
-            data: base64String,
-            mimeType: file.type,
-          },
-        },
-        prompt,
-      ]);
-  
-      const response = await result.response;
-      const text = response.text();
-      const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
-  
-      try {
-        const data = JSON.parse(cleanedText);
-        return {
-          amount: parseFloat(data.amount),
-          date: new Date(data.date),
-          description: data.description,
-          category: data.category,
-          merchantName: data.merchantName,
-        };
-      } catch (parseError) {
-        console.error("Error parsing JSON response:", parseError);
-        throw new Error("Invalid response format from Gemini");
-      }
+
+        const result = await model.generateContent([
+            {
+                inlineData: {
+                    data: base64String,
+                    mimeType: file.type,
+                },
+            },
+            prompt,
+        ]);
+
+        const response = await result.response;
+        const text = response.text();
+        const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
+
+        try {
+            const data = JSON.parse(cleanedText);
+            return {
+                amount: parseFloat(data.amount),
+                date: new Date(data.date),
+                description: data.description,
+                category: data.category,
+                merchantName: data.merchantName,
+            };
+        } catch (parseError) {
+            console.error("Error parsing JSON response:", parseError);
+            throw new Error("Invalid response format from Gemini");
+        }
     } catch (error) {
-      console.error("Error scanning receipt:", error);
-      throw new Error("Failed to scan receipt");
+        console.error("Error scanning receipt:", error);
+        throw new Error("Failed to scan receipt");
+    }
+}
+
+export async function getTransactions(id) {
+    try {
+        const { userId } = await auth();
+        if (!userId) throw new Error('Unauthorized');
+
+        const user = await db.user.findUnique({
+            where: { clerkUserId: userId }
+        });
+
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        const transaction = await db.transaction.findUnique({
+            where: {
+                id,
+                userId: user.id,
+            }
+        });
+
+        if (!transaction) throw new Error("Transaction not found");
+
+        return serializedAmount(transaction);
+    }
+    catch (error) {
+        console.error(error);
+    }
+}
+
+export async function updateTransaction(id, data) {
+    try {
+      const { userId } = await auth();
+      if (!userId) throw new Error("Unauthorized");
+  
+      const user = await db.user.findUnique({
+        where: { clerkUserId: userId },
+      });
+  
+      if (!user) throw new Error("User not found");
+  
+      
+      
+      // Get original transaction to calculate balance change
+      const originalTransaction = await db.transaction.findUnique({
+        where: {
+          id,
+          userId: user.id,
+        },
+        include: {
+          account: true,
+        },
+      });
+  
+      if (!originalTransaction) throw new Error("Transaction not found");
+  
+      // Calculate balance changes
+      const oldBalanceChange =
+        originalTransaction.type === "EXPENSE"
+          ? -originalTransaction.amount.toNumber()
+          : originalTransaction.amount.toNumber();
+  
+      const newBalanceChange =
+        data.type === "EXPENSE" ? -data.amount : data.amount;
+  
+      const netBalanceChange = newBalanceChange - oldBalanceChange;
+  
+      // Update transaction and account balance in a transaction
+      const transaction = await db.$transaction(async (tx) => {
+        const updated = await tx.transaction.update({
+          where: {
+            id,
+            userId: user.id,
+          },
+          data: {
+            ...data,
+            nextRecurringDate:
+              data.isRecurring && data.recurringInterval
+                ? calculateNextRecurringDate(data.date, data.recurringInterval)
+                : null,
+          },
+        });
+  
+        // Update account balance
+        await tx.account.update({
+          where: { id: data.accountId },
+          data: {
+            balance: {
+              increment: netBalanceChange,
+            },
+          },
+        });
+  
+        return updated;
+      });
+  
+      revalidatePath("/dashboard");
+      revalidatePath(`/account/${data.accountId}`);
+  
+      return { success: true, data: serializedAmount(transaction) };
+    } catch (error) {
+      throw new Error(error.message);
     }
   }
-  
