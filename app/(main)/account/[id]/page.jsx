@@ -2,8 +2,11 @@ import { getAccountWithTransaction } from '@/actions/account'
 import { notFound } from 'next/navigation';
 import React, { Suspense } from 'react'
 import { BarLoader } from 'react-spinners';
-import TransactionTable from '../_components/transaction-table';
-import AccountChart from '../_components/account-chart';
+import dynamic from 'next/dynamic';
+// import TransactionTable from '../_components/transaction-table';
+const TransactionTable = dynamic(() => import('../_components/transaction-table'))
+// import AccountChart from '../_components/account-chart';
+const AccountChart = dynamic(() => import('../_components/account-chart'));
 
 const AccountPage = async ({ params }) => {
     const { id } = await params; 

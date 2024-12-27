@@ -16,7 +16,7 @@ const Header = async () => {
                 </Link>
 
                 <div className="flex items-center space-x-4">
-                    <SignedIn>
+                    <SignedIn> {/** Renders the enclosed content only if the user is signed in. */}
                         <Link href="/dashboard" className="text-gray-600 hover:text-blue-600 flex items-center gap-2">
                             <Button variant="outline">
                                 <LayoutDashboard size={18} />
@@ -32,7 +32,7 @@ const Header = async () => {
                         </Link>
                     </SignedIn>
 
-                    <SignedOut>
+                    <SignedOut>    {/** Renders the enclosed content if the user is signed out. */}
                         <SignInButton forceRedirectUrl="/dashboard">
                             <Button variant="outline">Login</Button>
                         </SignInButton>

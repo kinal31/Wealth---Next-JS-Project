@@ -1,5 +1,5 @@
 
-# Modern Financial Dashboard
+# Wealth - Modern Financial Dashboard
 
 A robust financial management application built with Next.js, featuring real-time transaction tracking, AI-powered insights, and automated monthly reporting.
 
@@ -42,8 +42,13 @@ A robust financial management application built with Next.js, featuring real-tim
 - **Task Scheduling**: Inngest
 - **Security**: Arcjet
 
-## ⚙️ Installation
 
-1. Clone the repository:
-```bash
-git clone [your-repo-link]
+## Other Packages
+
+- date-fns : Provides a wide range of functions to manipulate and formatting dates.
+- lucide-react : lucide-react is a collection of beautifully crafted, customizable React icons based on the Lucide icon set.
+- react-spinners : react-spinners is a library of reusable loading spinners built for React. 
+- recharts : For creating responsive charts and graphs.
+- resend : Resend is an email API that allows developers to send transactional emails, including verification emails, password reset emails, and more.
+- sonner : Sonner is a library for React that provides toast notifications with simple and customizable UI and animations.
+

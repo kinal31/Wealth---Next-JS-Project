@@ -16,7 +16,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import React, { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
-import ReceiptScanner from './receipt-scanner'
+import dynamic from 'next/dynamic'
+// import ReceiptScanner from './receipt-scanner'
+const ReceiptScanner = dynamic(() => import('./receipt-scanner'))
 
 const AddTransactionForm = ({ accounts, categories, editMode = false, initialData = null }) => {  // if editmode true then it override
 

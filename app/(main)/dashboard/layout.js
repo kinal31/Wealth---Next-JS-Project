@@ -2,6 +2,11 @@ import React, { Suspense } from 'react'
 import DashboardPage from './page'
 import { BarLoader } from "react-spinners";
 
+export const metadata = {
+    title: "Wealth App | Dashboard",
+    description: "User can create and see their account and statistics",
+  };
+
 const layout = () => {
     return (
         <div className='px-5'>

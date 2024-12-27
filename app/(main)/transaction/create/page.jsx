@@ -1,7 +1,9 @@
 import { getUserAccounts } from '@/actions/dashboard'
 import { defaultCategories } from '@/data/categories';
 import React from 'react'
-import AddTransactionForm from '../_component/transaction-form';
+import dynamic from 'next/dynamic';
+// import AddTransactionForm from '../_component/transaction-form';
+const AddTransactionForm = dynamic(() => import('../_component/transaction-form'))
 import { getTransactions } from '@/actions/transaction';
 
 const AddTransactionPage = async({searchParams}) => {

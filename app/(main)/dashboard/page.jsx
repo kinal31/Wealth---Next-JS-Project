@@ -2,11 +2,15 @@ import { getAccountData, getUserAccounts } from '@/actions/dashboard'
 import CreateAccountDrawer from '@/components/CreateAccountDrawer'
 import { Card, CardContent } from '@/components/ui/card'
 import { Plus } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import React, { Suspense } from 'react'
-import AccountCard from './_components/account-card'
+// import AccountCard from './_components/account-card'
+const AccountCard = dynamic(() => import('./_components/account-card'))
 import { getCurrentBudget } from '@/actions/budget'
-import BudgetProgress from './_components/budget-progress'
-import DashboardOverview from './_components/dashboard-overview'
+// import BudgetProgress from './_components/budget-progress'
+const BudgetProgress = dynamic(() => import('./_components/budget-progress'))
+// import DashboardOverview from './_components/dashboard-overview'
+const DashboardOverview = dynamic(() => import('./_components/dashboard-overview'))
 
 export default async function DashboardPage (){
     const accounts = await getUserAccounts();
