@@ -2,7 +2,7 @@ import { Body, Button, Container, Head, Heading, Html, Preview, Section, Text } 
 import * as React from "react";
 
 export default function EmailTemplate({
-    userName = "Kinal Kotheeya",
+    userName = "",
     type = "monthly-report",
     data = {},
 }) {
@@ -45,7 +45,7 @@ export default function EmailTemplate({
                                 {Object.entries(data?.stats.byCategory).map(
                                     ([category, amount]) => (
                                         <div key={category} style={styles.row}>
-                                            <Text style={styles.text}>{category}</Text>
+                                            <Text style={styles.text}>{category} : </Text>
                                             <Text style={styles.text}>${amount}</Text>
                                         </div>
                                     )
